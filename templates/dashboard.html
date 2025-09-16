@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card portfolio-summary mb-4">
+            <div class="card-body text-center">
+                <div class="row">
+                    <div class="col-md-3">
+                        <h5>Cash Balance</h5>
+                        <h3>${{ "%.2f"|format(current_user.cash) }}</h3>
+                    </div>
+                    <div class="col-md-3">
+                        <h5>Portfolio Value</h5>
+                        <h3>${{ "%.2f"|format(portfolio_value) }}</h3>
+                    </div>
+                    <div class="col-md-3">
+                        <h5>Total Account Value</h5>
+                        <h3>${{ "%.2f"|format(total_account_value) }}</h3>
+                    </div>
+                    <div class="col-md-3">
+                        <h5>Portfolio Return</h5>
+                        <h3 class="{% if total_account_value > 10000 %}gain{% else %}loss{% endif %}">
+                            {{ "%.2f"|format(total_account_value - 10000) }}
+                            ({{ "%.1f"|format(((total_account_value - 10000) / 10000) * 100) }}%)
+                        </h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-pie"></i> Your Portfolio</h5>
+            </div>
+            <div class="card-body">
+                {% if portfolio_data %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Shares</th>
+                                <th>Avg Price</th>
+                                <th>Current Price</th>
+                                <th>Total Value</th>
+                                <th>Gain/Loss</th>
+                                <th>Return %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for holding in portfolio_data %}
+                            <tr>
+                                <td><strong>{{ holding.symbol }}</strong></td>
+                                <td>{{ holding.shares }}</td>
+                                <td>${{ "%.2f"|format(holding.avg_price) }}</td>
+                                <td>${{ "%.2f"|format(holding.current_price) }}</td>
+                                <td>${{ "%.2f"|format(holding.total_value) }}</td>
+                                <td class="{% if holding.gain_loss >= 0 %}gain{% else %}loss{% endif %}">
+                                    ${{ "%.2f"|format(holding.gain_loss) }}
+                                </td>
+                                <td class="{% if holding.gain_loss_percent >= 0 %}gain{% else %}loss{% endif %}">
+                                    {{ "%.1f"|format(holding.gain_loss_percent) }}%
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                    <h5>No stocks in your portfolio yet</h5>
+                    <p class="text-muted">Start investing to see your holdings here!</p>
+                    <a href="{{ url_for('buy') }}" class="btn btn-success">
+                        <i class="fas fa-plus"></i> Buy Your First Stock
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-exchange-alt"></i> Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('buy') }}" class="btn btn-success">
+                        <i class="fas fa-arrow-up"></i> Buy Stocks
+                    </a>
+                    <a href="{{ url_for('sell') }}" class="btn btn-danger">
+                        <i class="fas fa-arrow-down"></i> Sell Stocks
+                    </a>
+                    <a href="{{ url_for('portfolio') }}" class="btn btn-info">
+                        <i class="fas fa-history"></i> View History
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-lightbulb"></i> Trading Tips</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li><i class="fas fa-check text-success me-2"></i> Diversify your portfolio</li>
+                    <li><i class="fas fa-check text-success me-2"></i> Don't put all money in one stock</li>
+                    <li><i class="fas fa-check text-success me-2"></i> Research before investing</li>
+                    <li><i class="fas fa-check text-success me-2"></i> Monitor market trends</li>
+                    <li><i class="fas fa-check text-success me-2"></i> Practice patience</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if portfolio_data %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-pie"></i> Portfolio Allocation</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="portfolioChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Portfolio allocation chart
+const ctx = document.getElementById('portfolioChart').getContext('2d');
+const portfolioChart = new Chart(ctx, {
+    type: 'pie',
+    data: {
+        labels: [{% for holding in portfolio_data %}'{{ holding.symbol }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            data: [{% for holding in portfolio_data %}{{ holding.total_value }}{% if not loop.last %},{% endif %}{% endfor %}],
+            backgroundColor: [
+                '#FF6384',
+                '#36A2EB',
+                '#FFCE56',
+                '#4BC0C0',
+                '#9966FF',
+                '#FF9F40',
+                '#FF6384',
+                '#C9CBCF'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const value = context.parsed;
+                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                        const percentage = ((value / total) * 100).toFixed(1);
+                        return context.label + ': $' + value.toFixed(2) + ' (' + percentage + '%)';
+                    }
+                }
+            }
+        }
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

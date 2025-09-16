@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="fas fa-history"></i> Transaction History</h4>
+            </div>
+            <div class="card-body">
+                {% if transactions %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Date & Time</th>
+                                <th>Type</th>
+                                <th>Symbol</th>
+                                <th>Shares</th>
+                                <th>Price</th>
+                                <th>Total Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in transactions %}
+                            <tr>
+                                <td>{{ transaction.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                <td>
+                                    <span class="badge {% if transaction.transaction_type == 'BUY' %}bg-success{% else %}bg-danger{% endif %}">
+                                        <i class="fas fa-arrow-{% if transaction.transaction_type == 'BUY' %}up{% else %}down{% endif %}"></i>
+                                        {{ transaction.transaction_type }}
+                                    </span>
+                                </td>
+                                <td><strong>{{ transaction.symbol }}</strong></td>
+                                <td>{{ transaction.shares }}</td>
+                                <td>${{ "%.2f"|format(transaction.price) }}</td>
+                                <td>${{ "%.2f"|format(transaction.price * transaction.shares) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-success text-white">
+                                <h6 class="mb-0"><i class="fas fa-arrow-up"></i> Total Bought</h6>
+                            </div>
+                            <div class="card-body text-center">
+                                <h4>${{ "%.2f"|format(transactions | selectattr('transaction_type', 'equalto', 'BUY') | sum(attribute='price') * transactions | selectattr('transaction_type', 'equalto', 'BUY') | sum(attribute='shares') if transactions | selectattr('transaction_type', 'equalto', 'BUY') | list else 0) }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-danger text-white">
+                                <h6 class="mb-0"><i class="fas fa-arrow-down"></i> Total Sold</h6>
+                            </div>
+                            <div class="card-body text-center">
+                                <h4>${{ "%.2f"|format(transactions | selectattr('transaction_type', 'equalto', 'SELL') | sum(attribute='price') * transactions | selectattr('transaction_type', 'equalto', 'SELL') | sum(attribute='shares') if transactions | selectattr('transaction_type', 'equalto', 'SELL') | list else 0) }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                    <h5>No transactions yet</h5>
+                    <p class="text-muted">Start trading to see your transaction history here!</p>
+                    <a href="{{ url_for('buy') }}" class="btn btn-success">
+                        <i class="fas fa-plus"></i> Make Your First Trade
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if transactions %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-line"></i> Trading Activity Over Time</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="activityChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Trading activity chart
+const activityCtx = document.getElementById('activityChart').getContext('2d');
+
+// Prepare data for the chart
+const transactionData = [
+    {% for transaction in transactions %}
+    {
+        timestamp: "{{ transaction.timestamp.strftime('%Y-%m-%d') }}",
+        type: "{{ transaction.transaction_type }}",
+        value: {{ transaction.price * transaction.shares }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
+const dates = [...new Set(transactionData.map(t => t.timestamp))].sort();
+
+const buyData = dates.map(date => {
+    return transactionData.filter(t => t.timestamp === date && t.type === 'BUY')
+                         .reduce((sum, t) => sum + t.value, 0);
+});
+
+const sellData = dates.map(date => {
+    return transactionData.filter(t => t.timestamp === date && t.type === 'SELL')
+                          .reduce((sum, t) => sum + t.value, 0);
+});
+
+const activityChart = new Chart(activityCtx, {
+    type: 'bar',
+    data: {
+        labels: dates,
+        datasets: [{
+            label: 'Bought ($)',
+            data: buyData,
+            backgroundColor: 'rgba(40, 167, 69, 0.8)',
+            borderColor: 'rgba(40, 167, 69, 1)',
+            borderWidth: 1
+        }, {
+            label: 'Sold ($)',
+            data: sellData,
+            backgroundColor: 'rgba(220, 53, 69, 0.8)',
+            borderColor: 'rgba(220, 53, 69, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'top'
+            }
+        },
+        scales: {
+            x: {
+                beginAtZero: true
+            },
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return '$' + value.toFixed(0);
+                    }
+                }
+            }
+        }
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

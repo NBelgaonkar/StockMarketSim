@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="jumbotron bg-primary text-white text-center py-5 rounded">
+    <div class="container">
+        <h1 class="display-4"><i class="fas fa-chart-line"></i> Stock Market Simulator</h1>
+        <p class="lead">Learn investing with virtual money and real market data</p>
+        <p class="mb-4">Practice buying and selling stocks, analyze your portfolio performance, and master the art of investing without financial risk!</p>
+        
+        {% if not current_user.is_authenticated %}
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <a class="btn btn-success btn-lg me-3" href="{{ url_for('register') }}">
+                    <i class="fas fa-user-plus"></i> Get Started
+                </a>
+                <a class="btn btn-outline-light btn-lg" href="{{ url_for('login') }}">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </a>
+            </div>
+        </div>
+        {% else %}
+        <a class="btn btn-success btn-lg" href="{{ url_for('dashboard') }}">
+            <i class="fas fa-tachometer-alt"></i> Go to Dashboard
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-dollar-sign fa-3x text-success mb-3"></i>
+                <h5 class="card-title">Virtual Trading</h5>
+                <p class="card-text">Start with $10,000 virtual money to practice trading without any real financial risk.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-chart-area fa-3x text-primary mb-3"></i>
+                <h5 class="card-title">Real Market Data</h5>
+                <p class="card-text">Trade with real-time stock prices and market data to simulate authentic trading experience.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-analytics fa-3x text-warning mb-3"></i>
+                <h5 class="card-title">Portfolio Analytics</h5>
+                <p class="card-text">Track your performance with detailed analytics, gains/losses, and portfolio diversification.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-graduation-cap"></i> Educational Features</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-check text-success me-2"></i> Buy and sell stocks in real-time</li>
+                            <li><i class="fas fa-check text-success me-2"></i> Track portfolio performance</li>
+                            <li><i class="fas fa-check text-success me-2"></i> Analyze gains and losses</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-check text-success me-2"></i> Portfolio diversification insights</li>
+                            <li><i class="fas fa-check text-success me-2"></i> Transaction history tracking</li>
+                            <li><i class="fas fa-check text-success me-2"></i> Risk-free learning environment</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
