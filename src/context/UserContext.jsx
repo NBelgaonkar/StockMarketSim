@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import { restoreSession, loadUserPortfolio, clearUserPortfolio } from '../api'
 
 const UserContext = createContext()
 
@@ -18,7 +19,10 @@ export const UserProvider = ({ children }) => {
     // Check for existing user session
     const savedUser = localStorage.getItem('user')
     if (savedUser) {
-      setUser(JSON.parse(savedUser))
+      const parsedUser = JSON.parse(savedUser)
+      setUser(parsedUser)
+      // Restore API session and load portfolio
+      restoreSession(parsedUser)
     }
     setIsLoading(false)
   }, [])
@@ -26,18 +30,21 @@ export const UserProvider = ({ children }) => {
   const login = (userData) => {
     setUser(userData)
     localStorage.setItem('user', JSON.stringify(userData))
+    // Portfolio is already loaded by the login API call
   }
 
   const logout = () => {
     setUser(null)
     localStorage.removeItem('user')
+    clearUserPortfolio()
   }
 
   const value = {
     user,
     login,
     logout,
-    isLoading
+    isLoading,
+    isAuthenticated: !!user,
   }
 
   return (

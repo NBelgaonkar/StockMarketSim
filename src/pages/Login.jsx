@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useUser } from '../context/UserContext'
+import { loginUser } from '../api'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
@@ -8,6 +9,12 @@ import Input from '../components/ui/Input'
 const Login = () => {
   const { login } = useUser()
   const navigate = useNavigate()
+  const location = useLocation()
+  
+  // Get redirect message and return path from location state
+  const redirectMessage = location.state?.message
+  const returnPath = location.state?.from || '/'
+  
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -59,28 +66,24 @@ const Login = () => {
     setIsLoading(true)
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Mock successful login
-      const userData = {
-        id: 1,
+      const response = await loginUser({
         email: formData.email,
-        name: formData.email.split('@')[0],
-        createdAt: new Date().toISOString()
-      }
+        password: formData.password,
+      })
       
-      login(userData)
-      navigate('/')
+      login(response.data.user)
+      
+      // Navigate to the page they tried to access, or home
+      navigate(returnPath)
     } catch (error) {
-      setErrors({ general: 'Login failed. Please try again.' })
+      setErrors({ general: error.message || 'Login failed. Please try again.' })
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-primary-600 mb-2">StockSim</h1>
@@ -95,6 +98,18 @@ const Login = () => {
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        {/* Redirect Message Banner */}
+        {redirectMessage && (
+          <div className="mb-4 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg flex items-start gap-3">
+            <span className="text-amber-500 mt-0.5">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </span>
+            <p className="text-sm">{redirectMessage}</p>
+          </div>
+        )}
+
         <Card className="py-8 px-4 shadow-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
             {errors.general && (
@@ -175,16 +190,17 @@ const Login = () => {
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Demo credentials</span>
+                <span className="px-2 bg-white text-gray-500">Demo mode</span>
               </div>
             </div>
 
-            <div className="mt-4 bg-gray-50 p-4 rounded-md">
-              <p className="text-sm text-gray-600 mb-2">Try these demo accounts:</p>
-              <div className="space-y-1 text-sm">
-                <div><strong>Email:</strong> demo@stocksim.com</div>
-                <div><strong>Password:</strong> password123</div>
-              </div>
+            <div className="mt-4 bg-blue-50 p-4 rounded-md border border-blue-200">
+              <p className="text-sm text-blue-800 mb-2">
+                <strong>First time?</strong> Just enter any email and password to create a demo account.
+              </p>
+              <p className="text-xs text-blue-600">
+                New accounts start with $0 balance. Use "Add Funds" to deposit virtual money.
+              </p>
             </div>
           </div>
         </Card>

@@ -1,57 +1,50 @@
-import React, { useState } from 'react'
-import { usePortfolio } from '../hooks/usePortfolio'
-import PortfolioTable from '../components/PortfolioTable'
-import ChartCard from '../components/ChartCard'
+import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { getPortfolioSummary, getPositions } from '../api'
+import PageHeader from '../components/layout/PageHeader'
+import PerformanceChart from '../components/charts/PerformanceChart'
+import AllocationChart from '../components/charts/AllocationChart'
+import HoldingsTable from '../components/portfolio/HoldingsTable'
+import AddFundsModal from '../components/wallet/AddFundsModal'
 import Card from '../components/ui/Card'
+import StatCard from '../components/ui/StatCard'
 import Button from '../components/ui/Button'
 
 const Portfolio = () => {
-  const { portfolio, isLoading } = usePortfolio()
-  const [selectedTimeframe, setSelectedTimeframe] = useState('1M')
+  const navigate = useNavigate()
+  const [summary, setSummary] = useState(null)
+  const [positions, setPositions] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [allocationView, setAllocationView] = useState('ticker') // 'ticker' | 'sector'
+  const [showAddFunds, setShowAddFunds] = useState(false)
 
-  // Sample performance data for different timeframes
-  const performanceData = {
-    '1D': [
-      { name: '9:30', value: 12500 },
-      { name: '10:00', value: 12550 },
-      { name: '10:30', value: 12520 },
-      { name: '11:00', value: 12580 },
-      { name: '11:30', value: 12543 }
-    ],
-    '1W': [
-      { name: 'Mon', value: 12000 },
-      { name: 'Tue', value: 12100 },
-      { name: 'Wed', value: 12200 },
-      { name: 'Thu', value: 12300 },
-      { name: 'Fri', value: 12543 }
-    ],
-    '1M': [
-      { name: 'Week 1', value: 10000 },
-      { name: 'Week 2', value: 10500 },
-      { name: 'Week 3', value: 11000 },
-      { name: 'Week 4', value: 12543 }
-    ],
-    '1Y': [
-      { name: 'Jan', value: 8000 },
-      { name: 'Apr', value: 9000 },
-      { name: 'Jul', value: 10000 },
-      { name: 'Oct', value: 11500 },
-      { name: 'Dec', value: 12543 }
-    ]
+  const fetchData = async () => {
+    setIsLoading(true)
+    try {
+      const [summaryResponse, positionsResponse] = await Promise.all([
+        getPortfolioSummary(),
+        getPositions(),
+      ])
+      setSummary(summaryResponse.data)
+      setPositions(positionsResponse.data)
+    } catch (error) {
+      console.error('Failed to fetch portfolio data:', error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const allocationData = [
-    { name: 'AAPL', value: 40 },
-    { name: 'GOOGL', value: 25 },
-    { name: 'TSLA', value: 20 },
-    { name: 'Cash', value: 15 }
-  ]
-
-  const timeframes = ['1D', '1W', '1M', '1Y']
+  useEffect(() => {
+    fetchData()
+  }, [])
 
   const handleTrade = (position, action) => {
-    // Navigate to trade page with pre-selected position
-    console.log(`${action} ${position.symbol}`)
+    navigate(`/trade?symbol=${position.symbol}`)
+  }
+
+  const handleAddFundsSuccess = (amount) => {
+    // Refresh data after adding funds
+    fetchData()
   }
 
   if (isLoading) {
@@ -65,142 +58,185 @@ const Portfolio = () => {
     )
   }
 
+  const needsFunding = summary && summary.totalValue === 0
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Portfolio</h1>
-          <p className="text-gray-600">Track your investments and performance</p>
-        </div>
+        <PageHeader 
+          title="Portfolio" 
+          subtitle="Track your investments and performance"
+        >
+          <Button variant="success" onClick={() => setShowAddFunds(true)}>
+            + Add Funds
+          </Button>
+          <Button variant="primary" onClick={() => navigate('/trade')}>
+            Trade
+          </Button>
+        </PageHeader>
 
-        {/* Portfolio Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="text-center">
-            <div className="text-3xl font-bold text-gray-900 mb-1">
-              ${portfolio.totalValue.toLocaleString()}
-            </div>
-            <div className="text-sm text-gray-600">Total Value</div>
-          </Card>
-          <Card className="text-center">
-            <div className="text-3xl font-bold text-gray-900 mb-1">
-              ${portfolio.cash.toLocaleString()}
-            </div>
-            <div className="text-sm text-gray-600">Available Cash</div>
-          </Card>
-          <Card className="text-center">
-            <div className={`text-3xl font-bold mb-1 ${portfolio.totalGainLoss >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
-              {portfolio.totalGainLoss >= 0 ? '+' : ''}${portfolio.totalGainLoss.toLocaleString()}
-            </div>
-            <div className="text-sm text-gray-600">Total P&L</div>
-          </Card>
-          <Card className="text-center">
-            <div className={`text-3xl font-bold mb-1 ${portfolio.totalGainLossPercent >= 0 ? 'text-success-600' : 'text-danger-600'}`}>
-              {portfolio.totalGainLossPercent >= 0 ? '+' : ''}{portfolio.totalGainLossPercent.toFixed(2)}%
-            </div>
-            <div className="text-sm text-gray-600">Return</div>
-          </Card>
-        </div>
+        {/* Empty State - Needs Funding */}
+        {needsFunding && (
+          <div className="mb-8">
+            <Card className="text-center py-16 bg-gradient-to-br from-slate-50 to-slate-100">
+              <div className="max-w-md mx-auto">
+                <div className="text-6xl mb-6">🏦</div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-3">Welcome to Your Portfolio</h2>
+                <p className="text-gray-600 mb-6">
+                  Your account is set up and ready! Add virtual funds to start building your investment portfolio.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <Button variant="success" size="lg" onClick={() => setShowAddFunds(true)}>
+                    Add Funds to Get Started
+                  </Button>
+                </div>
+                <p className="mt-4 text-sm text-gray-500">
+                  This is virtual money for practice trading — no real payment required.
+                </p>
+              </div>
+            </Card>
+          </div>
+        )}
 
-        {/* Performance Chart */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <Card>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Portfolio Performance</h3>
-              <div className="flex space-x-2">
-                {timeframes.map((timeframe) => (
+        {/* Summary Cards - Always Show */}
+        {summary && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <StatCard
+              label="Total Value"
+              value={`$${summary.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              change={summary.initialDeposit > 0 ? `${summary.overallReturnPercent >= 0 ? '+' : ''}${summary.overallReturnPercent.toFixed(2)}%` : undefined}
+              changeLabel={summary.initialDeposit > 0 ? "overall" : undefined}
+              trend={summary.overallReturn >= 0 ? 'up' : 'down'}
+            />
+            <StatCard
+              label="Available Cash"
+              value={`$${summary.cash.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            />
+            <StatCard
+              label="Invested Value"
+              value={`$${summary.investedValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            />
+            <StatCard
+              label="Total Gain/Loss"
+              value={summary.costBasis > 0 
+                ? `${summary.totalGainLoss >= 0 ? '+' : ''}$${Math.abs(summary.totalGainLoss).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                : '$0.00'
+              }
+              change={summary.costBasis > 0 ? `${summary.totalGainLossPercent >= 0 ? '+' : ''}${summary.totalGainLossPercent.toFixed(2)}%` : undefined}
+              trend={summary.totalGainLoss >= 0 ? 'up' : 'down'}
+            />
+          </div>
+        )}
+
+        {/* Charts Section - Only show if user has activity */}
+        {summary && summary.totalValue > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <Card title="Performance History">
+              <PerformanceChart height={280} showControls={true} />
+            </Card>
+
+            <Card>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Allocation</h3>
+                <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
                   <button
-                    key={timeframe}
-                    onClick={() => setSelectedTimeframe(timeframe)}
-                    className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                      selectedTimeframe === timeframe
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    onClick={() => setAllocationView('ticker')}
+                    className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                      allocationView === 'ticker'
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
                     }`}
                   >
-                    {timeframe}
+                    By Ticker
                   </button>
-                ))}
+                  <button
+                    onClick={() => setAllocationView('sector')}
+                    className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                      allocationView === 'sector'
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    By Sector
+                  </button>
+                </div>
               </div>
-            </div>
-            <ChartCard 
-              data={performanceData[selectedTimeframe]} 
-              type="line" 
-              height={300}
-            />
-          </Card>
-
-          <Card>
-            <h3 className="text-lg font-semibold mb-4">Portfolio Allocation</h3>
-            <ChartCard 
-              data={allocationData} 
-              type="pie" 
-              height={300}
-            />
-          </Card>
-        </div>
-
-        {/* Positions Table */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Positions</h2>
-            <Button variant="primary">
-              Add Position
-            </Button>
+              <AllocationChart height={240} groupBy={allocationView} />
+            </Card>
           </div>
-          {portfolio.positions.length > 0 ? (
-            <PortfolioTable 
-              positions={portfolio.positions} 
+        )}
+
+        {/* Holdings Table */}
+        {positions.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">Holdings</h2>
+              <span className="text-sm text-gray-500">
+                {positions.length} position{positions.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+
+            <HoldingsTable 
+              positions={positions}
               onTrade={handleTrade}
             />
-          ) : (
-            <Card className="text-center py-12">
-              <div className="text-6xl mb-4">📈</div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Positions Yet</h3>
-              <p className="text-gray-600 mb-6">Start building your portfolio by making your first trade</p>
-              <Button variant="primary" size="lg">
-                Start Trading
-              </Button>
-            </Card>
-          )}
-        </div>
-
-        {/* Recent Activity */}
-        <Card title="Recent Activity">
-          <div className="space-y-4">
-            <div className="flex justify-between items-center py-3 border-b border-gray-200">
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-success-500 rounded-full"></div>
-                <div>
-                  <p className="font-medium">Bought 5 shares of AAPL</p>
-                  <p className="text-sm text-gray-600">2 hours ago</p>
-                </div>
-              </div>
-              <span className="text-success-600 font-medium">+$250.00</span>
-            </div>
-            <div className="flex justify-between items-center py-3 border-b border-gray-200">
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-danger-500 rounded-full"></div>
-                <div>
-                  <p className="font-medium">Sold 2 shares of GOOGL</p>
-                  <p className="text-sm text-gray-600">1 day ago</p>
-                </div>
-              </div>
-              <span className="text-danger-600 font-medium">-$15.20</span>
-            </div>
-            <div className="flex justify-between items-center py-3">
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-primary-500 rounded-full"></div>
-                <div>
-                  <p className="font-medium">Initial deposit</p>
-                  <p className="text-sm text-gray-600">3 days ago</p>
-                </div>
-              </div>
-              <span className="text-primary-600 font-medium">+$10,000.00</span>
-            </div>
           </div>
-        </Card>
+        )}
+
+        {/* No Holdings Yet - But Has Cash */}
+        {positions.length === 0 && summary && summary.cash > 0 && (
+          <Card className="text-center py-12 mb-8">
+            <div className="text-5xl mb-4">📈</div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Ready to Invest</h3>
+            <p className="text-gray-600 mb-6 max-w-sm mx-auto">
+              You have ${summary.cash.toLocaleString('en-US', { minimumFractionDigits: 2 })} available. 
+              Start building your portfolio by buying your first stock!
+            </p>
+            <Button variant="primary" size="lg" onClick={() => navigate('/trade')}>
+              Browse Stocks to Buy
+            </Button>
+          </Card>
+        )}
+
+        {/* Cash Card - Show if user has holdings */}
+        {positions.length > 0 && summary && (
+          <Card className="bg-gradient-to-r from-gray-800 to-gray-900 text-white">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div>
+                <p className="text-gray-400 text-sm mb-1">Available Cash</p>
+                <p className="text-3xl font-bold">
+                  ${summary.cash.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+                <p className="text-gray-400 text-sm mt-2">
+                  Ready to invest in your next opportunity
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline" 
+                  className="border-gray-600 text-white hover:bg-gray-700"
+                  onClick={() => setShowAddFunds(true)}
+                >
+                  Add More
+                </Button>
+                <Button 
+                  variant="primary" 
+                  onClick={() => navigate('/trade')}
+                >
+                  Invest Now
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
       </div>
+
+      {/* Add Funds Modal */}
+      <AddFundsModal 
+        isOpen={showAddFunds}
+        onClose={() => setShowAddFunds(false)}
+        onSuccess={handleAddFundsSuccess}
+      />
     </div>
   )
 }
