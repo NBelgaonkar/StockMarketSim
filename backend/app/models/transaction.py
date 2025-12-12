@@ -11,6 +11,17 @@ class TransactionType(StrEnum):
     BUY = "buy"
     SELL = "sell"
 
+class TransactionOrderType(StrEnum):
+    MARKET = "market"
+    LIMIT = "limit"
+    STOP_LOSS = "stop_loss"
+    STOP_LIMIT = "stop_limit"
+
+class TransactionOptionsContract(StrEnum):
+    CALL = "call"
+    PUT = "put"
+    NONE = "none"
+
 class TransactionStatus(StrEnum):
     PENDING = "pending"
     COMPLETED = "completed"
@@ -22,6 +33,8 @@ class TransactionBase(SQLModel):
     quantity: float = Field(gt=0)
     price_per_unit: float = Field(gt=0)
     transaction_type: TransactionType = Field(sa_column=Column(SQLEnum(TransactionType)))
+    order_type: TransactionOrderType = Field(sa_column=Column(SQLEnum(TransactionOrderType)), default=TransactionOrderType.MARKET)
+    options_contract: TransactionOptionsContract = Field(sa_column=Column(SQLEnum(TransactionOptionsContract)), default=TransactionOptionsContract.NONE)
     status: TransactionStatus = Field(sa_column=Column(SQLEnum(TransactionStatus)), default=TransactionStatus.PENDING)
 
 class TransactionCreate(TransactionBase):
