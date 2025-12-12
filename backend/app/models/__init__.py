@@ -10,6 +10,8 @@ from .user import (
     ItemUpdate,
 )
 
+from .transaction import Transaction, TransactionCreate
+
 __all__ = [
     "Message",
     "Token",
@@ -20,4 +22,6 @@ __all__ = [
     "ItemPublic",
     "ItemsPublic",
     "ItemUpdate",
+    "Transaction",
+    "TransactionCreate",
 ]

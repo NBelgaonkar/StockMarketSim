@@ -2,8 +2,8 @@ import uuid
 import datetime
 from enum import StrEnum
 
-from sqlmodel import Field, Relationship, SQLModel
 from sqlalchemy import Column, Enum as SQLEnum
+from app.models.models import Field, Relationship, SQLModel
 from app.models.user import User
 
 
@@ -16,8 +16,7 @@ class TransactionStatus(StrEnum):
     COMPLETED = "completed"
     FAILED = "failed"
 
-class TransactionBase(SQLModel, table=True):
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+class TransactionBase(SQLModel):
     timestamp: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
     symbol: str = Field(min_length=1, max_length=99)
     quantity: float = Field(gt=0)
@@ -34,7 +33,8 @@ class TransactionSell(TransactionBase):
 class TransactionBuy(TransactionBase):
     pass
 
-class Transaction(TransactionBase):
+class Transaction(TransactionBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     owner_id: uuid.UUID = Field(
         foreign_key="user.id", nullable=False, ondelete="CASCADE"
     )
