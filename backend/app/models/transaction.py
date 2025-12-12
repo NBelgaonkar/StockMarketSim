@@ -17,7 +17,7 @@ class TransactionStatus(StrEnum):
     FAILED = "failed"
 
 class TransactionBase(SQLModel):
-    timestamp: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
+    timestamp: datetime.datetime = Field(default_factory=datetime.datetime.now)
     symbol: str = Field(min_length=1, max_length=99)
     quantity: float = Field(gt=0)
     price_per_unit: float = Field(gt=0)
