@@ -5,7 +5,7 @@ from enum import StrEnum
 from sqlalchemy import Column, Enum as SQLEnum
 from app.models.models import Field, Relationship, SQLModel
 from app.models.user import User
-
+from app.models.security import Security
 
 class TransactionType(StrEnum):
     BUY = "buy"
@@ -36,6 +36,9 @@ class TransactionBase(SQLModel):
     order_type: TransactionOrderType = Field(sa_column=Column(SQLEnum(TransactionOrderType)), default=TransactionOrderType.MARKET)
     options_contract: TransactionOptionsContract = Field(sa_column=Column(SQLEnum(TransactionOptionsContract)), default=TransactionOptionsContract.NONE)
     status: TransactionStatus = Field(sa_column=Column(SQLEnum(TransactionStatus)), default=TransactionStatus.PENDING)
+    security_id: uuid.UUID = Field(
+        foreign_key="security.id", nullable=False
+    )
 
 class TransactionCreate(TransactionBase):
     pass
