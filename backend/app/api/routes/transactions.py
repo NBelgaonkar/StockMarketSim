@@ -53,3 +53,63 @@ def create_transaction(
     session.commit()
     session.refresh(db_transaction)
     return db_transaction
+
+@router.get("/stats/total-volume", response_model=float)
+def get_total_transaction_volume(
+    session: SessionDep, current_user: CurrentUser
+) -> Any:
+    """
+    Get total transaction volume for the current user.
+    """
+    statement = (
+        select(func.sum(Transaction.quantity * Transaction.price_per_unit))
+        .where(Transaction.user_id == current_user.id)
+    )
+    total_volume = session.exec(statement).one()
+    return total_volume or 0.0
+
+@router.get("/stats/total-count", response_model=int)
+def get_total_transaction_count(
+    session: SessionDep, current_user: CurrentUser
+) -> Any:
+    """
+    Get total transaction count for the current user.
+    """
+    statement = (
+        select(func.count())
+        .where(Transaction.user_id == current_user.id)
+    )
+    total_count = session.exec(statement).one()
+    return total_count or 0
+
+@router.post("/buy", response_model=Transaction)
+def buy_transaction(
+    *, session: SessionDep, current_user: CurrentUser, transaction_in: TransactionCreate
+) -> Any:
+    """
+    Create a buy transaction for the current user.
+    """
+    db_transaction = Transaction.model_validate(
+        transaction_in,
+        update={"user_id": current_user.id, "type": "buy"}
+    )
+    session.add(db_transaction)
+    session.commit()
+    session.refresh(db_transaction)
+    return db_transaction
+
+@router.post("/sell", response_model=Transaction)
+def sell_transaction(
+    *, session: SessionDep, current_user: CurrentUser, transaction_in: TransactionCreate
+) -> Any:
+    """
+    Create a sell transaction for the current user.
+    """
+    db_transaction = Transaction.model_validate(
+        transaction_in,
+        update={"user_id": current_user.id, "type": "sell"}
+    )
+    session.add(db_transaction)
+    session.commit()
+    session.refresh(db_transaction)
+    return db_transaction
