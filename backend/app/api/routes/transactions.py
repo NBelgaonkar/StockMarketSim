@@ -113,3 +113,54 @@ def sell_transaction(
     session.commit()
     session.refresh(db_transaction)
     return db_transaction
+
+@router.get("/stats/average-price/{symbol}", response_model=float)
+def get_average_price_for_symbol(
+    session: SessionDep, current_user: CurrentUser, symbol: str
+) -> Any:
+    """
+    Get average price per unit for a given symbol for the current user.
+    """
+    statement = (
+        select(func.avg(Transaction.price_per_unit))
+        .where(
+            (Transaction.user_id == current_user.id) &
+            (Transaction.symbol == symbol)
+        )
+    )
+    average_price = session.exec(statement).one()
+    return average_price or 0.0
+
+@router.get("/stats/total-volume/{symbol}", response_model=float)
+def get_total_volume_for_symbol(
+    session: SessionDep, current_user: CurrentUser, symbol: str
+) -> Any:
+    """
+    Get total transaction volume for a given symbol for the current user.
+    """
+    statement = (
+        select(func.sum(Transaction.quantity * Transaction.price_per_unit))
+        .where(
+            (Transaction.user_id == current_user.id) &
+            (Transaction.symbol == symbol)
+        )
+    )
+    total_volume = session.exec(statement).one()
+    return total_volume or 0.0
+
+@router.get("/stats/total-count/{symbol}", response_model=int)
+def get_total_count_for_symbol(
+    session: SessionDep, current_user: CurrentUser, symbol: str
+) -> Any:
+    """
+    Get total transaction count for a given symbol for the current user.
+    """
+    statement = (
+        select(func.count())
+        .where(
+            (Transaction.user_id == current_user.id) &
+            (Transaction.symbol == symbol)
+        )
+    )
+    total_count = session.exec(statement).one()
+    return total_count or 0
