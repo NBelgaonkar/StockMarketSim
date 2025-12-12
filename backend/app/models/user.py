@@ -1,6 +1,6 @@
 import uuid
 
-from pydantic import EmailStr
+from pydantic import EmailStr, BaseModel
 from app.models.models import Field, Relationship, SQLModel
 from typing import TYPE_CHECKING
 
@@ -10,9 +10,9 @@ if TYPE_CHECKING:
 # Shared properties
 class UserBase(SQLModel):
     email: EmailStr = Field(unique=True, index=True, max_length=255)
-    username: str | None = Field(default=None, max_length=50)
-    first_name: str | None = Field(default=None, max_length=50)
-    last_name: str | None = Field(default=None, max_length=50)
+    username: str = Field(unique=True, index=True, max_length=50)
+    first_name: str | None = Field(max_length=50)
+    last_name: str | None = Field(max_length=50)
     is_active: bool = True
     is_superuser: bool = False
 
@@ -52,6 +52,11 @@ class User(UserBase, table=True):
 
 
 # Properties to return via API, id is always required
+class UserRegisterResponse(BaseModel):
+    user: UserBase
+    token: str
+
+
 class UserPublic(UserBase):
     id: uuid.UUID
 

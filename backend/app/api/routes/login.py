@@ -29,10 +29,10 @@ def login_access_token(
     OAuth2 compatible token login, get an access token for future requests
     """
     user = crud.authenticate(
-        session=session, email=form_data.username, password=form_data.password
+        session=session, username=form_data.username, password=form_data.password
     )
     if not user:
-        raise HTTPException(status_code=400, detail="Incorrect email or password")
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
     elif not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)

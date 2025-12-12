@@ -52,6 +52,41 @@ let currentSession = null;
  * Used in: src/pages/Register.jsx
  */
 export const registerUser = async ({ email, username, password, firstName, lastName }) => {
+  fetch('http://127.0.0.1:8000/api/v1/users/signup/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email,
+      username,
+      password,
+      first_name: firstName,
+      last_name: lastName,
+    }),
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error('Network response was not ok ' + response.statusText);
+    }
+    console.log('Success:', response);
+
+    const newUser = {
+      id: response.user.id,
+      email: response.user.email,
+      username: response.user.username,
+      firstName: response.user.first_name,
+      lastName: response.user.last_name,
+      createdAt: new Date().toISOString(),
+    };
+
+    return { user: newUser, token: response.token };
+  })
+  .catch((error) => {
+    console.error('Error:', error);
+  });
+  console.log("Response: ", response);
+
   const mockUsers = getUsersFromStorage();
   
   // Check if user already exists
@@ -59,16 +94,7 @@ export const registerUser = async ({ email, username, password, firstName, lastN
   if (existingUser) {
     throw new Error('User with this email or username already exists');
   }
-
-  const newUser = {
-    id: Date.now(),
-    email,
-    username,
-    firstName,
-    lastName,
-    createdAt: new Date().toISOString(),
-  };
-
+  /*
   mockUsers.push(newUser);
   saveUsersToStorage(mockUsers);
 
@@ -77,11 +103,7 @@ export const registerUser = async ({ email, username, password, firstName, lastN
 
   // Initialize empty portfolio for new user (starts with $0)
   initializeUserPortfolio(newUser.id);
-
-  return mockRequest({
-    user: newUser,
-    token: mockToken,
-  });
+  */
 };
 
 /**

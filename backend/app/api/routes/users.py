@@ -1,3 +1,4 @@
+from datetime import timedelta
 import uuid
 from typing import Any
 
@@ -15,16 +16,19 @@ from app.core.security import get_password_hash, verify_password
 from app.models.user import (
     Item,
     Message,
+    Token,
     UpdatePassword,
     User,
     UserCreate,
     UserPublic,
     UserRegister,
+    UserRegisterResponse,
     UsersPublic,
     UserUpdate,
     UserUpdateMe,
 )
 from app.utils import generate_new_account_email, send_email
+from app.core import security
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -139,20 +143,46 @@ def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Any:
     return Message(message="User deleted successfully")
 
 
-@router.post("/signup", response_model=UserPublic)
+@router.post("/signup", response_model=UserRegisterResponse)
 def register_user(session: SessionDep, user_in: UserRegister) -> Any:
     """
     Create new user without the need to be logged in.
     """
-    user = crud.get_user_by_email(session=session, email=user_in.email)
-    if user:
+    if crud.get_user_by_email(session=session, email=user_in.email):
         raise HTTPException(
             status_code=400,
             detail="The user with this email already exists in the system",
         )
+    if crud.get_user_by_username(session=session, username=user_in.username):
+        raise HTTPException(
+            status_code=400,
+            detail="The user with this username already exists in the system",
+        )
     user_create = UserCreate.model_validate(user_in)
     user = crud.create_user(session=session, user_create=user_create)
-    return user
+
+    # Now login the new user automatically to get a token
+    """
+    OAuth2 compatible token login, get an access token for future requests
+    """
+    user = crud.authenticate(
+        session=session, username=user_in.username, password=user_in.password
+    )
+    if not user:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    elif not user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    login_token =  Token(
+        access_token=security.create_access_token(
+            user.id, expires_delta=access_token_expires
+        )
+    )
+
+    return {
+        "user": user,
+        "token": login_token.access_token,
+    }
 
 
 @router.get("/{user_id}", response_model=UserPublic)
