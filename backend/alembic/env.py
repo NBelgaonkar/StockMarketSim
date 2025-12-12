@@ -45,7 +45,8 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
-        user_module_prefix="sqlmodel.sql.sqltypes."
+        user_module_prefix="sqlmodel.sql.sqltypes.",
+        render_as_batch=True,
     )
 
     with context.begin_transaction():
@@ -70,6 +71,7 @@ def run_migrations_online() -> None:
             connection=connection,
             target_metadata=target_metadata,
             user_module_prefix="sqlmodel.sql.sqltypes.",
+            render_as_batch=True,
         )
 
         with context.begin_transaction():

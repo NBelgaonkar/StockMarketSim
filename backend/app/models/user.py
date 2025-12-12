@@ -2,7 +2,10 @@ import uuid
 
 from pydantic import EmailStr
 from app.models.models import Field, Relationship, SQLModel
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from .transaction import Transaction
 
 # Shared properties
 class UserBase(SQLModel):
@@ -45,6 +48,7 @@ class User(UserBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     hashed_password: str
     items: list["Item"] = Relationship(back_populates="owner", cascade_delete=True)
+    transactions: list["Transaction"] = Relationship(back_populates="user", cascade_delete=True)
 
 
 # Properties to return via API, id is always required
