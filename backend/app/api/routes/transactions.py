@@ -38,3 +38,18 @@ def get_transaction(
     if transaction.user_id != current_user.id:
         raise HTTPException(status_code=400, detail="Not enough permissions")
     return transaction
+
+@router.post("/", response_model=Transaction)
+def create_transaction(
+    *, session: SessionDep, current_user: CurrentUser, transaction_in: TransactionCreate
+) -> Any:
+    """
+    Create a new transaction for the current user.
+    """
+    db_transaction = Transaction.model_validate(
+        transaction_in, update={"user_id": current_user.id}
+    )
+    session.add(db_transaction)
+    session.commit()
+    session.refresh(db_transaction)
+    return db_transaction
