@@ -42,8 +42,8 @@ def get_user_by_username(*, session: Session, username: str) -> User | None:
     return session_user
 
 
-def authenticate(*, session: Session, username: str, password: str) -> User | None:
-    db_user = get_user_by_username(session=session, username=username)
+def authenticate(*, session: Session, email: str, password: str) -> User | None:
+    db_user = get_user_by_email(session=session, email=email)
     if not db_user:
         return None
     if not verify_password(password, db_user.hashed_password):

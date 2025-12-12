@@ -10,12 +10,12 @@ const Register = () => {
   const { login } = useUser()
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    username: '',
-    password: '',
-    confirmPassword: ''
+    firstName: 'fn',
+    lastName: 'ln',
+    email: 'email@example.com',
+    username: 'user',
+    password: 'password',
+    confirmPassword: 'password'
   })
   const [errors, setErrors] = useState({})
   const [isLoading, setIsLoading] = useState(false)
@@ -91,7 +91,7 @@ const Register = () => {
         firstName: formData.firstName,
         lastName: formData.lastName,
       })
-      
+      console.log('Registration response:', response)
       login(response.data.user)
       navigate('/')
     } catch (error) {

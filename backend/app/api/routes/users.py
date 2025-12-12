@@ -1,8 +1,8 @@
-from datetime import timedelta
 import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import col, delete, func, select
 
 from app import crud
@@ -16,7 +16,6 @@ from app.core.security import get_password_hash, verify_password
 from app.models.user import (
     Item,
     Message,
-    Token,
     UpdatePassword,
     User,
     UserCreate,
@@ -28,7 +27,7 @@ from app.models.user import (
     UserUpdateMe,
 )
 from app.utils import generate_new_account_email, send_email
-from app.core import security
+from app.api.routes.login import login_access_token
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -162,21 +161,11 @@ def register_user(session: SessionDep, user_in: UserRegister) -> Any:
     user = crud.create_user(session=session, user_create=user_create)
 
     # Now login the new user automatically to get a token
-    """
-    OAuth2 compatible token login, get an access token for future requests
-    """
-    user = crud.authenticate(
-        session=session, username=user_in.username, password=user_in.password
-    )
-    if not user:
-        raise HTTPException(status_code=400, detail="Incorrect username or password")
-    elif not user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    login_token =  Token(
-        access_token=security.create_access_token(
-            user.id, expires_delta=access_token_expires
-        )
+    login_token = login_access_token(
+        session=session,
+        form_data=OAuth2PasswordRequestForm(
+            username=user_in.email, password=user_in.password, scope=""
+        ),
     )
 
     return {
