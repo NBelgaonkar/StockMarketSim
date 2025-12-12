@@ -16,6 +16,7 @@ class SecurityType(StrEnum):
     CRYPTOCURRENCY = "cryptocurrency"
     ADR = "adr"
 
+
 class SecurityBase(SQLModel):
     symbol: str = Field(unique=True, index=True, max_length=10)
     name: str = Field(max_length=255)
@@ -23,14 +24,17 @@ class SecurityBase(SQLModel):
     market: str = Field(max_length=100)
     currency: str = Field(max_length=10)
 
+
 class SecurityCreate(SecurityBase):
     pass
+
 
 class SecurityUpdate(SQLModel):
     name: str | None = Field(default=None, max_length=255)
     security_type: SecurityType | None = Field(default=None)
     market: str | None = Field(default=None, max_length=100)
     currency: str | None = Field(default=None, max_length=10)
+
 
 class Security(SecurityBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)

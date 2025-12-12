@@ -6,9 +6,11 @@ from sqlalchemy import Column, Enum as SQLEnum
 from app.models.models import Field, Relationship, SQLModel
 from app.models.user import User
 
+
 class TransactionType(StrEnum):
     BUY = "buy"
     SELL = "sell"
+
 
 class TransactionOrderType(StrEnum):
     MARKET = "market"
@@ -16,41 +18,57 @@ class TransactionOrderType(StrEnum):
     STOP_LOSS = "stop_loss"
     STOP_LIMIT = "stop_limit"
 
+
 class TransactionOptionsContract(StrEnum):
     CALL = "call"
     PUT = "put"
     NONE = "none"
+
 
 class TransactionStatus(StrEnum):
     PENDING = "pending"
     COMPLETED = "completed"
     FAILED = "failed"
 
+
 class TransactionBase(SQLModel):
     timestamp: datetime.datetime = Field(default_factory=datetime.datetime.now)
     symbol: str = Field(min_length=1, max_length=99)
     quantity: float = Field(gt=0)
     price_per_unit: float = Field(gt=0)
-    transaction_type: TransactionType = Field(sa_column=Column(SQLEnum(TransactionType)))
-    order_type: TransactionOrderType = Field(sa_column=Column(SQLEnum(TransactionOrderType)), default=TransactionOrderType.MARKET)
-    options_contract: TransactionOptionsContract = Field(sa_column=Column(SQLEnum(TransactionOptionsContract)), default=TransactionOptionsContract.NONE)
-    status: TransactionStatus = Field(sa_column=Column(SQLEnum(TransactionStatus)), default=TransactionStatus.PENDING)
-    security_id: uuid.UUID = Field(
-        foreign_key="security.id", nullable=False
+    transaction_type: TransactionType = Field(
+        sa_column=Column(SQLEnum(TransactionType))
     )
+    order_type: TransactionOrderType = Field(
+        sa_column=Column(SQLEnum(TransactionOrderType)),
+        default=TransactionOrderType.MARKET,
+    )
+    options_contract: TransactionOptionsContract = Field(
+        sa_column=Column(SQLEnum(TransactionOptionsContract)),
+        default=TransactionOptionsContract.NONE,
+    )
+    status: TransactionStatus = Field(
+        sa_column=Column(SQLEnum(TransactionStatus)), default=TransactionStatus.PENDING
+    )
+    security_id: uuid.UUID = Field(foreign_key="security.id", nullable=False)
+
 
 class TransactionCreate(TransactionBase):
     pass
 
+
 class TransactionSell(TransactionBase):
     pass
+
 
 class TransactionBuy(TransactionBase):
     pass
 
+
 class Transaction(TransactionBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     user_id: uuid.UUID = Field(
-        foreign_key="user.id", nullable=False#, ondelete="CASCADE"
+        foreign_key="user.id",
+        nullable=False,  # , ondelete="CASCADE"
     )
     user: User | None = Relationship(back_populates="transactions")
