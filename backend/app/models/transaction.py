@@ -5,7 +5,6 @@ from enum import StrEnum
 from sqlalchemy import Column, Enum as SQLEnum
 from app.models.models import Field, Relationship, SQLModel
 from app.models.user import User
-from app.models.security import Security
 
 class TransactionType(StrEnum):
     BUY = "buy"
