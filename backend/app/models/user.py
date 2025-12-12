@@ -1,15 +1,20 @@
 import uuid
 
-from pydantic import EmailStr
-from sqlmodel import Field, Relationship, SQLModel
+from pydantic import EmailStr, BaseModel
+from app.models.models import Field, Relationship, SQLModel
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from .transaction import Transaction
 
 # Shared properties
 class UserBase(SQLModel):
     email: EmailStr = Field(unique=True, index=True, max_length=255)
+    username: str = Field(unique=True, index=True, max_length=50)
+    first_name: str | None = Field(max_length=50)
+    last_name: str | None = Field(max_length=50)
     is_active: bool = True
     is_superuser: bool = False
-    full_name: str | None = Field(default=None, max_length=255)
 
 
 # Properties to receive via API on creation
@@ -17,10 +22,9 @@ class UserCreate(UserBase):
     password: str = Field(min_length=8, max_length=128)
 
 
-class UserRegister(SQLModel):
+class UserRegister(UserBase):
     email: EmailStr = Field(max_length=255)
     password: str = Field(min_length=8, max_length=128)
-    full_name: str | None = Field(default=None, max_length=255)
 
 
 # Properties to receive via API on update, all are optional
@@ -44,9 +48,15 @@ class User(UserBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     hashed_password: str
     items: list["Item"] = Relationship(back_populates="owner", cascade_delete=True)
+    transactions: list["Transaction"] = Relationship(back_populates="user", cascade_delete=True)
 
 
 # Properties to return via API, id is always required
+class UserRegisterResponse(BaseModel):
+    user: UserBase
+    token: str
+
+
 class UserPublic(UserBase):
     id: uuid.UUID
 

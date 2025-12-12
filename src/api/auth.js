@@ -28,7 +28,7 @@ const saveUsersToStorage = (users) => {
 };
 
 // Mock session storage
-let currentSession = null;
+let currentSession = { user: null, token: null };
 
 /**
  * Register a new user
@@ -52,23 +52,45 @@ let currentSession = null;
  * Used in: src/pages/Register.jsx
  */
 export const registerUser = async ({ email, username, password, firstName, lastName }) => {
-  const mockUsers = getUsersFromStorage();
-  
-  // Check if user already exists
-  const existingUser = mockUsers.find(u => u.email === email || u.username === username);
-  if (existingUser) {
-    throw new Error('User with this email or username already exists');
+  try {
+    const response = await fetch('http://127.0.0.1:8000/api/v1/users/signup/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email,
+        username,
+        password,
+        first_name: firstName,
+        last_name: lastName,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Network response was not ok ' + response);
+    }
+    const result = await response.json();
+    console.log('Registered user:', result);
+
+    const newUser = {
+      id: result.user.id,
+      email: result.user.email,
+      username: result.user.username,
+      firstName: result.user.first_name,
+      lastName: result.user.last_name,
+      createdAt: new Date().toISOString(),
+    };
+
+    currentSession = { user: newUser, token: result.token };
+
+    return { data: {user: newUser, token: result.token} };
+  } catch (error) {
+    console.error('Registration failed:', error);
+    throw error;
   }
-
-  const newUser = {
-    id: Date.now(),
-    email,
-    username,
-    firstName,
-    lastName,
-    createdAt: new Date().toISOString(),
-  };
-
+  
+  /*
   mockUsers.push(newUser);
   saveUsersToStorage(mockUsers);
 
@@ -77,11 +99,7 @@ export const registerUser = async ({ email, username, password, firstName, lastN
 
   // Initialize empty portfolio for new user (starts with $0)
   initializeUserPortfolio(newUser.id);
-
-  return mockRequest({
-    user: newUser,
-    token: mockToken,
-  });
+  */
 };
 
 /**
@@ -98,54 +116,43 @@ export const registerUser = async ({ email, username, password, firstName, lastN
  * Used in: src/pages/Login.jsx, src/hooks/useAuth.js
  */
 export const loginUser = async ({ email, password }) => {
-  const mockUsers = getUsersFromStorage();
-  
-  // Find existing user
-  let user = mockUsers.find(u => u.email === email);
-  
-  if (!user) {
-    // For demo purposes, create a new user if not found
-    // In production, this would return an error
-    user = {
-      id: Date.now(),
-      email,
-      username: email.split('@')[0],
-      firstName: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
-      lastName: 'User',
-      createdAt: new Date().toISOString(),
-    };
-    mockUsers.push(user);
-    saveUsersToStorage(mockUsers);
+  try {
+    const response = await fetch('http://127.0.0.1:8000/api/v1/login/access-token/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'password',
+        username: email,
+        password: password,
+        scope: '',
+        client_id: 'string',
+        client_secret: '',
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Network response was not ok ' + response.json());
+    }
+    const tokenData = await response.json();
+    console.log('Logged in user:', tokenData);
+
+    const token = tokenData.access_token;
+
+    // Update token in current session
+    currentSession.token = token;
+
+    // Fetch current user info
+    const currentUserResponse = await getCurrentUser();
+    currentSession.user = currentUserResponse.data.user;
+
+    return { data: currentSession };
     
-    // Initialize empty portfolio for new user
-    initializeUserPortfolio(user.id);
-  } else {
-    // Load existing portfolio
-    loadUserPortfolio(user.id);
+  } catch (error) {
+    console.error('Login failed:', error);
+    throw error;
   }
-
-  const mockToken = `mock-token-${user.id}-${Date.now()}`;
-  currentSession = { user, token: mockToken };
-
-  return mockRequest({
-    user,
-    token: mockToken,
-  });
-};
-
-/**
- * Logout the current user
- * 
- * Future Django endpoint: POST /api/auth/logout/
- * 
- * @returns {Promise<{data: {success: boolean}}>}
- * 
- * Used in: src/context/UserContext.jsx, src/components/Navbar.jsx
- */
-export const logoutUser = async () => {
-  currentSession = null;
-  clearUserPortfolio();
-  return mockRequest({ success: true });
 };
 
 /**
@@ -161,7 +168,56 @@ export const getCurrentUser = async () => {
   if (!currentSession) {
     throw new Error('Not authenticated');
   }
-  return mockRequest({ user: currentSession.user });
+
+  const token = currentSession.token;
+  
+  try {
+    const response = await fetch('http://127.0.0.1:8000/api/v1/users/me', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Network response was not ok ' + response.statusText);
+    }
+
+    const result = await response.json();
+    console.log('Current user:', result);
+
+    const currentUser = {
+      id: result.id,
+      email: result.email,
+      username: result.username,
+      firstName: result.first_name,
+      lastName: result.last_name,
+      createdAt: new Date().toISOString(),
+    };
+
+    currentSession.user = currentUser;
+
+    return { data: { user: currentUser } };
+  } catch (error) {
+    console.error('Failed to fetch current user:', error);
+    throw error;
+  }
+};
+
+/**
+ * Logout the current user
+ * 
+ * Future Django endpoint: POST /api/auth/logout/
+ * 
+ * @returns {Promise<{data: {success: boolean}}>}
+ * 
+ * Used in: src/context/UserContext.jsx, src/components/Navbar.jsx
+ */
+export const logoutUser = async () => {
+  currentSession = null;
+  clearUserPortfolio();
+  return mockRequest({ success: true });
 };
 
 /**

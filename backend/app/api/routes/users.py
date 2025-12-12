@@ -2,6 +2,7 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import col, delete, func, select
 
 from app import crud
@@ -20,11 +21,13 @@ from app.models.user import (
     UserCreate,
     UserPublic,
     UserRegister,
+    UserRegisterResponse,
     UsersPublic,
     UserUpdate,
     UserUpdateMe,
 )
 from app.utils import generate_new_account_email, send_email
+from app.api.routes.login import login_access_token
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -139,20 +142,36 @@ def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Any:
     return Message(message="User deleted successfully")
 
 
-@router.post("/signup", response_model=UserPublic)
+@router.post("/signup", response_model=UserRegisterResponse)
 def register_user(session: SessionDep, user_in: UserRegister) -> Any:
     """
     Create new user without the need to be logged in.
     """
-    user = crud.get_user_by_email(session=session, email=user_in.email)
-    if user:
+    if crud.get_user_by_email(session=session, email=user_in.email):
         raise HTTPException(
             status_code=400,
             detail="The user with this email already exists in the system",
         )
+    if crud.get_user_by_username(session=session, username=user_in.username):
+        raise HTTPException(
+            status_code=400,
+            detail="The user with this username already exists in the system",
+        )
     user_create = UserCreate.model_validate(user_in)
     user = crud.create_user(session=session, user_create=user_create)
-    return user
+
+    # Now login the new user automatically to get a token
+    login_token = login_access_token(
+        session=session,
+        form_data=OAuth2PasswordRequestForm(
+            username=user_in.email, password=user_in.password, scope=""
+        ),
+    )
+
+    return {
+        "user": user,
+        "token": login_token.access_token,
+    }
 
 
 @router.get("/{user_id}", response_model=UserPublic)
